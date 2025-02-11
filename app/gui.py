@@ -1,7 +1,19 @@
 import tkinter as tk
+from tkinter import *
 from tkinter import ttk, filedialog, messagebox
 import threading
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import TimeoutException
+import pandas as pd  # Добавить эту строку
 from .parser_logic import ParserLogic
+from .config import *
 
 class ParserApp:
     def __init__(self, root):
@@ -87,7 +99,27 @@ class ParserApp:
         threading.Thread(target=self.parse_excel).start()
 
     # ... (полный код методов create_widgets, setup_driver, browse_file и т.д.)
-    
+    def modify_url(self, original_url, attempt):
+        """Удаляет N цифр с конца URL, где N = номер попытки (макс. 4)"""
+        modified = original_url
+        for _ in range(min(attempt, 4)):
+            modified = re.sub(r'\d$', '', modified)
+        return modified.rstrip('/')
+		
+		
+    def update_progress(self, value):
+        self.progress.set(value)
+        self.root.update_idletasks()
+
+    def reset_ui(self):
+        self.start_btn.config(state=NORMAL)
+        self.cancel_btn.config(state=DISABLED)
+        self.progress.set(0)
+        self.running = False
+
+    def cancel_parsing(self):
+        self.running = False
+        self.cancel_btn.config(state=DISABLED)	
     def parse_excel(self):
         try:
             df = pd.read_excel(self.file_path.get(), engine='openpyxl')
@@ -98,12 +130,14 @@ class ParserApp:
                     break
 
                 bg_value = str(row.get('bg', '')).lower()
-                
+                print(f"\n[Fashion] Попытка {self.driver}/5")
+                print(f"\n[Fashion] Попытк {row.get('URL_DAM', '').strip()}/5")
+                print(f"\n[Fashion] Попыт {row.get('URL_MM', '').strip()}/5")
                 if 'fashion' in bg_value:
                     result = self.parser.process_fashion(
+                        #self.driver,
                         row.get('URL_DAM', '').strip(),
-                        row.get('URL_MM', '').strip(),
-                        self.driver
+                        row.get('URL_MM', '').strip()
                     )
                     df.at[index, 'ШК DAM'] = result
                 else:
